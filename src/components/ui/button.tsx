@@ -1,10 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/cn';
 
-type Direction = 'TOP' | 'LEFT' | 'BOTTOM' | 'RIGHT';
 type ButtonVariant = 'primary' | 'secondary' | 'ghost';
 type Ripple = { id: number; x: number; y: number };
 
@@ -16,31 +15,19 @@ type ButtonProps = {
   onClick?: () => void;
 };
 
-const movingMap: Record<Direction, string> = {
-  TOP: 'radial-gradient(50% 70% at 50% 0%, #ffffff 0%, #808080 40%, transparent 100%)',
-  LEFT: 'radial-gradient(40% 70% at 0% 50%, #ffffff 0%, #808080 40%, transparent 100%)',
-  BOTTOM:
-    'radial-gradient(50% 70% at 50% 100%, #ffffff 0%, #808080 40%, transparent 100%)',
-  RIGHT:
-    'radial-gradient(40% 70% at 100% 50%, #ffffff 0%, #808080 40%, transparent 100%)',
-};
-
-const hoverHighlight =
-  'radial-gradient(80% 200% at 50% 50%, #ffffff 0%, #a0a0a0 30%, transparent 100%)';
-
-function rotateDirection(current: Direction, clockwise: boolean): Direction {
-  const dirs: Direction[] = ['TOP', 'LEFT', 'BOTTOM', 'RIGHT'];
-  const i = dirs.indexOf(current);
-  return clockwise
-    ? dirs[(i - 1 + dirs.length) % dirs.length]
-    : dirs[(i + 1) % dirs.length];
-}
-
 const variantBase: Record<ButtonVariant, string> = {
   primary: 'bg-white text-[#0a0a0a] font-semibold',
   secondary: 'bg-[#171717] text-[#ededed]',
   ghost: 'bg-transparent text-[#a3a3a3] hover:text-white hover:bg-white/5',
 };
+
+/** Convert angle (degrees) to a position on the border perimeter */
+function angleToPosition(angle: number): { x: string; y: string } {
+  const rad = (angle * Math.PI) / 180;
+  const x = 50 + 50 * Math.cos(rad);
+  const y = 50 + 50 * Math.sin(rad);
+  return { x: `${x.toFixed(1)}%`, y: `${y.toFixed(1)}%` };
+}
 
 export function Button({
   className,
@@ -50,20 +37,44 @@ export function Button({
   onClick,
 }: ButtonProps) {
   const [hovered, setHovered] = useState(false);
-  const [direction, setDirection] = useState<Direction>('TOP');
-  const [ripples, setRipples] = useState<Ripple[]>([]);
   const [pressing, setPressing] = useState(false);
+  const [ripples, setRipples] = useState<Ripple[]>([]);
+  const [gradient, setGradient] = useState('');
+  const angleRef = useRef(0);
+  const rafRef = useRef<number>(0);
 
   const showBorder = variant === 'primary' && !disabled;
 
-  // Rotate the gradient light around the border
+  const sizeRef = useRef(40);
+  const hoveredRef = useRef(false);
+
   useEffect(() => {
-    if (hovered || !showBorder) return;
-    const interval = setInterval(() => {
-      setDirection((d) => rotateDirection(d, true));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [hovered, showBorder]);
+    hoveredRef.current = hovered;
+  }, [hovered]);
+
+  // Continuous smooth rotation + smooth size interpolation via rAF
+  useEffect(() => {
+    if (!showBorder) return;
+
+    const animate = () => {
+      angleRef.current = (angleRef.current + 0.5) % 360;
+
+      // Smoothly lerp size toward target
+      const target = hoveredRef.current ? 160 : 40;
+      sizeRef.current += (target - sizeRef.current) * 0.04;
+
+      const { x, y } = angleToPosition(angleRef.current);
+      const s = sizeRef.current;
+      const s2 = s * 1.6;
+      setGradient(
+        `radial-gradient(${s.toFixed(0)}% ${s2.toFixed(0)}% at ${x} ${y}, #ffffff 0%, #808080 40%, transparent 100%)`,
+      );
+      rafRef.current = requestAnimationFrame(animate);
+    };
+
+    rafRef.current = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [showBorder]);
 
   const handleClick = useCallback(
     (e: React.MouseEvent<HTMLElement>) => {
@@ -82,7 +93,7 @@ export function Button({
     [disabled, onClick],
   );
 
-  // Simple button for non-primary variants
+  // Non-primary variants — simple button
   if (!showBorder) {
     return (
       <motion.button
@@ -103,10 +114,10 @@ export function Button({
     );
   }
 
-  // Primary button with hover-border-gradient effect
+  // Primary — hover border gradient
   return (
     <motion.div
-      className="relative flex rounded-xl content-center bg-[#2a2a2a] transition duration-500 items-center flex-col h-min justify-center overflow-visible p-[2px] w-full"
+      className="relative flex rounded-xl content-center bg-[#2a2a2a] items-center flex-col h-min justify-center overflow-visible p-[2px] w-full"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => {
         setHovered(false);
@@ -126,7 +137,6 @@ export function Button({
           className,
         )}
       >
-        {/* Ripple on click */}
         <AnimatePresence>
           {ripples.map((ripple) => (
             <motion.span
@@ -148,26 +158,21 @@ export function Button({
         <span className="relative z-10">{children}</span>
       </div>
 
-      {/* Travelling gradient border */}
-      <motion.div
+      {/* Smooth gradient border — continuous angle, no snapping */}
+      <div
         className="flex-none inset-0 overflow-hidden absolute z-0 rounded-[inherit]"
         style={{
-          filter: 'blur(5px)',
+          filter: 'blur(4px)',
           position: 'absolute',
           width: '100%',
           height: '100%',
+          background: gradient,
+          transition: hovered ? 'none' : 'none',
         }}
-        initial={{ background: movingMap[direction] }}
-        animate={{
-          background: hovered
-            ? [movingMap[direction], hoverHighlight]
-            : movingMap[direction],
-        }}
-        transition={{ ease: 'linear', duration: 1 }}
       />
 
-      {/* Inner mask — fills everything except the 2px border */}
-      <div className="bg-white absolute z-1 flex-none inset-[2px] rounded-[10px]" />
+      {/* Inner mask */}
+      <div className="bg-white absolute z-[1] flex-none inset-[2px] rounded-[10px]" />
     </motion.div>
   );
 }
