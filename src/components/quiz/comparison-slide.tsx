@@ -41,7 +41,7 @@ export function ComparisonSlide({ onContinue }: { onContinue: () => void }) {
         </motion.p>
 
         {/* Shared container — both sections share one width, centered as a block */}
-        <div className="flex flex-col items-center">
+        <div className="flex flex-col">
           {/* Addiction section */}
           <motion.div
             initial={{ opacity: 0, y: 12 }}
@@ -79,7 +79,7 @@ export function ComparisonSlide({ onContinue }: { onContinue: () => void }) {
               delay: 0.9,
               ease: [0.22, 1, 0.36, 1],
             }}
-            className="my-6 h-px w-16 origin-center bg-gradient-to-r from-transparent via-white/12 to-transparent"
+            className="my-6 h-px w-16 self-center origin-center bg-gradient-to-r from-transparent via-white/12 to-transparent"
           />
 
           {/* Detox section */}
