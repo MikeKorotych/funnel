@@ -27,6 +27,7 @@ export function QuestionScreen({
   onAdvance,
   onContinue,
   notificationDelay = 0,
+  phoneMode = false,
 }: {
   node: DialogueNode;
   onAnswer: (answer: DialogueAnswer) => void;
@@ -34,6 +35,7 @@ export function QuestionScreen({
   onAdvance: () => void;
   onContinue: () => void;
   notificationDelay?: number;
+  phoneMode?: boolean;
 }) {
   const [welcomePhase, setWelcomePhase] = useState<WelcomePhase>(
     notificationDelay > 0 ? 'waiting' : 'notifications',
@@ -73,20 +75,63 @@ export function QuestionScreen({
     return (
       <div className="flex flex-col justify-between flex-1 py-4">
         <div className="flex-1 flex flex-col items-center justify-center">
-          {welcomePhase === 'notifications' && (
+          {(welcomePhase === 'waiting' || welcomePhase === 'notifications') && (
             <RainEffect opacity={0.4} speed={6} />
           )}
 
           <AnimatePresence mode="wait">
-            {welcomePhase === 'notifications' && (
-              <motion.div key="notifs" exit={{ opacity: 0 }} className="w-full">
-                <AnimatedNotifications
-                  intervalMs={1200}
-                  dissolveAfterMs={6000}
-                  onComplete={() => setWelcomePhase('enough')}
-                />
-              </motion.div>
-            )}
+            {(welcomePhase === 'waiting' ||
+              welcomePhase === 'notifications') &&
+              (phoneMode ? (
+                /* Phone mode — notifications on phone screen */
+                <motion.div
+                  key="phone-notifs"
+                  exit={{ opacity: 0, y: 40, scale: 0.9 }}
+                  transition={{ duration: 0.4 }}
+                  className="w-full flex flex-col items-center"
+                  style={{ perspective: '800px' }}
+                >
+                  <motion.div
+                    initial={{ y: 300, rotateX: 60, opacity: 0 }}
+                    animate={{ y: 0, rotateX: 0, opacity: 1 }}
+                    transition={{ duration: 1.5, ease: [0.22, 1, 0.36, 1] }}
+                    className="relative w-[480px] max-w-[80vw]"
+                    style={{ transformStyle: 'preserve-3d' }}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src="/iPhone 14 Pro.png"
+                      alt=""
+                      className="w-full h-auto relative z-0"
+                    />
+                    <div className="absolute inset-[8%] top-[10%] bottom-[25%] z-10 flex flex-col justify-end overflow-hidden">
+                      {welcomePhase === 'notifications' && (
+                        <AnimatedNotifications
+                          intervalMs={1200}
+                          dissolveAfterMs={6000}
+                          onComplete={() => setWelcomePhase('enough')}
+                        />
+                      )}
+                    </div>
+                  </motion.div>
+                </motion.div>
+              ) : (
+                /* Default mode — plain notifications */
+                <motion.div
+                  key="plain-notifs"
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.5 }}
+                  className="w-full"
+                >
+                  {welcomePhase === 'notifications' && (
+                    <AnimatedNotifications
+                      intervalMs={1200}
+                      dissolveAfterMs={6000}
+                      onComplete={() => setWelcomePhase('enough')}
+                    />
+                  )}
+                </motion.div>
+              ))}
 
             {welcomePhase === 'enough' && (
               <motion.div

@@ -74,20 +74,13 @@ const DEFAULT_NOTIFICATIONS: Notification[] = [
   },
   {
     id: '4',
-    app: 'Discord',
-    logo: <ImgLogo src="/images/icons/discord.svg" bg="#5865F2" />,
-    text: 'Mike: Bro, all-nighter tonight? 🎮',
-    color: '#5865F2',
-  },
-  {
-    id: '5',
     app: 'WhatsApp',
     logo: <ImgLogo src="/images/icons/whatsapp.png" bg="#25D366" />,
     text: 'Mom: Are you coming for dinner?',
     color: '#25D366',
   },
   {
-    id: '6',
+    id: '5',
     app: 'YouTube',
     logo: (
       <SvgLogo
@@ -203,7 +196,7 @@ export function AnimatedNotifications({
                       layout: { duration: 0.15 },
                     }
               }
-              className="flex items-center gap-3 bg-white/[0.06] backdrop-blur-md rounded-xl px-3 py-2.5 border border-white/[0.08]"
+              className="flex items-center gap-3 bg-black/[0.05] backdrop-blur-xl rounded-xl px-3 py-2.5 border border-white/10 shadow-md"
             >
               {notif.logo}
               <div className="flex-1 min-w-0">

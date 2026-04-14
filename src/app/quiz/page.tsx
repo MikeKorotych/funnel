@@ -69,6 +69,7 @@ export default function QuizPage() {
   const [revealType, setRevealType] = useState<RevealType>('circle');
   const [bgType, setBgType] = useState<BgType>('topography');
   const [showDevPanel, setShowDevPanel] = useState(false);
+  const [phoneMode, setPhoneMode] = useState(false);
 
   useEffect(() => {
     if (!isInitialized && topic) initialize();
@@ -140,6 +141,7 @@ export default function QuizPage() {
             onAdvance={handleAdvance}
             onContinue={handleContinue}
             notificationDelay={revealType === 'eye' ? 2000 : 0}
+            phoneMode={phoneMode}
           />
         </SceneTransition>
       </main>
@@ -237,6 +239,19 @@ export default function QuizPage() {
                   {key}
                 </button>
               ))}
+
+              <div className="h-px bg-[#303030] my-1" />
+              <p className="text-[10px] text-white/30 px-2">Notifications</p>
+              <button
+                onClick={() => setPhoneMode((p) => !p)}
+                className={`text-xs px-3 py-1.5 rounded text-left ${
+                  phoneMode
+                    ? 'bg-white text-black'
+                    : 'text-white/60 hover:bg-white/10'
+                }`}
+              >
+                {phoneMode ? 'Phone: ON' : 'Phone: OFF'}
+              </button>
             </div>
           )}
         </>
