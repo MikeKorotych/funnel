@@ -9,19 +9,6 @@ const dialogueTree: DialogueTree = {
   nodes: {
     welcome: {
       id: 'welcome',
-      type: 'break',
-      scene: {
-        dialogue:
-          'Welcome, traveler. Digital freedom, is here. But first, we need to get to know you so we can figure out the best way for you to get out of this. Answer honestly.',
-        subtext: 'This will take about 2 minutes',
-        mood: 'neutral',
-      },
-      xpReward: 10,
-      nextNodeId: 'screen-time',
-    },
-
-    'screen-time': {
-      id: 'screen-time',
       type: 'question',
       answerType: 'slider',
       scene: {
@@ -34,39 +21,49 @@ const dialogueTree: DialogueTree = {
         max: 12,
         step: 1,
         unit: 'h',
-        defaultValue: 3,
+        defaultValue: 2,
       },
-      xpReward: 25,
+      xpReward: 35,
       answers: [
         {
           id: 'st-low',
           text: '1-3 hours',
-          nextNodeId: 'primary-trigger',
+          nextNodeId: 'screen-time-reflection',
           tags: ['low-usage'],
           score: { addiction_severity: 2, awareness: 3 },
         },
         {
           id: 'st-medium',
           text: '4-6 hours',
-          nextNodeId: 'primary-trigger',
+          nextNodeId: 'screen-time-reflection',
           tags: ['medium-usage'],
           score: { addiction_severity: 5, awareness: 2 },
         },
         {
           id: 'st-high',
           text: '7-9 hours',
-          nextNodeId: 'primary-trigger',
+          nextNodeId: 'screen-time-reflection',
           tags: ['high-usage'],
           score: { addiction_severity: 8, awareness: 1 },
         },
         {
           id: 'st-extreme',
           text: '10-12 hours',
-          nextNodeId: 'primary-trigger',
+          nextNodeId: 'screen-time-reflection',
           tags: ['extreme-usage'],
           score: { addiction_severity: 10, awareness: 1 },
         },
       ],
+    },
+
+    'screen-time-reflection': {
+      id: 'screen-time-reflection',
+      type: 'break',
+      scene: {
+        dialogue: 'In the last five years, your phone has taken more time than it seems.',
+        mood: 'concerned',
+      },
+      nextNodeId: 'primary-trigger',
     },
 
     'primary-trigger': {

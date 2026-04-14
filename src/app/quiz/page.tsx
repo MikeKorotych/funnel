@@ -44,6 +44,7 @@ export default function QuizPage() {
     progress,
     level,
     xp,
+    answers,
     history,
     initialize,
     selectAnswer,
@@ -114,6 +115,8 @@ export default function QuizPage() {
     if (history.length > 0) goBack();
   }, [history, goBack]);
 
+  const screenTimeHoursPerDay = Number(answers.welcome?.value ?? 3);
+
   if (!topic || !currentNode) {
     return (
       <div className="min-h-dvh flex items-center justify-center bg-[#0a0a0a]">
@@ -140,6 +143,7 @@ export default function QuizPage() {
             onMultiAnswer={handleMultiAnswer}
             onAdvance={handleAdvance}
             onContinue={handleContinue}
+            screenTimeHoursPerDay={screenTimeHoursPerDay}
             notificationDelay={revealType === 'eye' ? 2000 : 0}
             phoneMode={phoneMode}
           />

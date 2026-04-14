@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { motion } from "framer-motion";
 import type { SliderConfig, DialogueAnswer } from "@/engine/types";
 import { Button } from "@/components/ui/button";
@@ -9,23 +9,42 @@ export function SliderInput({
   config,
   answers,
   onSelect,
+  autoSubmit = false,
 }: {
   config: SliderConfig;
   answers: DialogueAnswer[];
   onSelect: (answer: DialogueAnswer) => void;
+  autoSubmit?: boolean;
 }) {
   const [value, setValue] = useState(config.defaultValue);
+  const interactionStartedRef = useRef(false);
+  const submittedRef = useRef(false);
 
   const percentage = ((value - config.min) / (config.max - config.min)) * 100;
 
-  const handleConfirm = () => {
+  const submitValue = (nextValue: number) => {
+    if (submittedRef.current) return;
+
     const bucketSize = (config.max - config.min) / answers.length;
     const idx = Math.min(
-      Math.floor((value - config.min) / bucketSize),
+      Math.floor((nextValue - config.min) / bucketSize),
       answers.length - 1,
     );
     const answer = answers[idx];
-    if (answer) onSelect(answer);
+    if (!answer) return;
+
+    submittedRef.current = true;
+    onSelect({ ...answer, value: nextValue });
+  };
+
+  const handleConfirm = () => {
+    submitValue(value);
+  };
+
+  const handleRelease = () => {
+    if (!autoSubmit || !interactionStartedRef.current) return;
+    interactionStartedRef.current = false;
+    submitValue(value);
   };
 
   return (
@@ -54,6 +73,12 @@ export function SliderInput({
           step={config.step}
           value={value}
           onChange={(e) => setValue(Number(e.target.value))}
+          onPointerDown={() => {
+            interactionStartedRef.current = true;
+          }}
+          onPointerUp={handleRelease}
+          onMouseUp={handleRelease}
+          onTouchEnd={handleRelease}
           className="absolute inset-0 w-full h-2 opacity-0 cursor-pointer"
           style={{ margin: 0 }}
         />
@@ -70,11 +95,13 @@ export function SliderInput({
         <span className="text-xs text-text-muted">{config.max}{config.unit}</span>
       </div>
 
-      <div className="mt-auto pt-4 pb-8">
-        <Button onClick={handleConfirm} className="w-full">
-          Continue
-        </Button>
-      </div>
+      {!autoSubmit && (
+        <div className="mt-auto pt-4 pb-8">
+          <Button onClick={handleConfirm} className="w-full">
+            Continue
+          </Button>
+        </div>
+      )}
     </motion.div>
   );
 }

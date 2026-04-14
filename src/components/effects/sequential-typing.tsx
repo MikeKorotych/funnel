@@ -20,14 +20,27 @@ export function SequentialTyping({
   className?: string;
   onComplete?: () => void;
 }) {
-  const [renderKey, setRenderKey] = useState(0);
-  const rerender = useCallback(() => setRenderKey((n) => n + 1), []);
-
   const linesRef = useRef<string[]>(['']);
   const currentLineRef = useRef(0);
   const fadeTextsRef = useRef<string[]>([]);
   const showCursorRef = useRef(true);
   const abortRef = useRef<AbortController | null>(null);
+  const [viewState, setViewState] = useState({
+    lines: [''],
+    currentLine: 0,
+    fadeTexts: [] as string[],
+    showCursor: true,
+  });
+  const rerender = useCallback(
+    () =>
+      setViewState({
+        lines: [...linesRef.current],
+        currentLine: currentLineRef.current,
+        fadeTexts: [...fadeTextsRef.current],
+        showCursor: showCursorRef.current,
+      }),
+    [],
+  );
 
   useEffect(() => {
     // Abort any previous run
@@ -67,9 +80,20 @@ export function SequentialTyping({
             }
           } else if (step.type === 'delete') {
             const speed = step.speed ?? 20;
-            while ((linesRef.current[currentLineRef.current] ?? '').length > 0) {
-              linesRef.current[currentLineRef.current] =
-                linesRef.current[currentLineRef.current].slice(0, -1);
+            while (
+              (linesRef.current[currentLineRef.current] ?? '').length > 0 ||
+              currentLineRef.current > 0
+            ) {
+              if ((linesRef.current[currentLineRef.current] ?? '').length > 0) {
+                linesRef.current[currentLineRef.current] =
+                  linesRef.current[currentLineRef.current].slice(0, -1);
+              } else {
+                linesRef.current.pop();
+                currentLineRef.current = Math.max(
+                  0,
+                  linesRef.current.length - 1,
+                );
+              }
               rerender();
               await wait(speed);
             }
@@ -99,24 +123,19 @@ export function SequentialTyping({
     return () => controller.abort();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const lines = linesRef.current;
-  const curLine = currentLineRef.current;
-  const showCursor = showCursorRef.current;
-  const fadeTexts = fadeTextsRef.current;
-
   return (
     <div className={cn('text-lg font-medium text-text-primary leading-relaxed', className)}>
-      {lines.map((line, i) => (
+      {viewState.lines.map((line, i) => (
         <span key={i}>
           {i > 0 && <br />}
           {line}
-          {i === curLine && showCursor && (
+          {i === viewState.currentLine && viewState.showCursor && (
             <span className="cursor-blink text-text-secondary ml-0.5">|</span>
           )}
         </span>
       ))}
 
-      {fadeTexts.map((text, i) => (
+      {viewState.fadeTexts.map((text, i) => (
         <motion.span
           key={i}
           initial={{ opacity: 0 }}

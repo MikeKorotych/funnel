@@ -51,6 +51,7 @@ export type DialogueAnswer = {
   emoji?: string;
   icon?: string;
   nextNodeId: NodeId;
+  value?: number;
   /** Tags for personalization scoring */
   tags?: string[];
   /** Score contribution per dimension */

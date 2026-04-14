@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { DialogueNode, DialogueAnswer } from '@/engine/types';
 import { DialogueBubble } from './dialogue-bubble';
 import { AnswerGrid } from './answer-grid';
@@ -10,6 +10,7 @@ import { SliderInput } from './slider-input';
 import { LoaderScreen } from './loader-screen';
 import { ComparisonSlide } from './comparison-slide';
 import { GuideCharacter } from './guide-character';
+import { ScreenTimeReflection } from './screen-time-reflection';
 import { AnimatedNotifications } from '@/components/effects/animated-notifications';
 import { RainEffect } from '@/components/effects/rain-effect';
 import { SequentialTyping } from '@/components/effects/sequential-typing';
@@ -19,15 +20,25 @@ import { Button } from '@/components/ui/button';
 import { SmoothHeightContainer } from '@/components/ui/smooth-height';
 import { motion, AnimatePresence } from 'framer-motion';
 
-type WelcomePhase = 'waiting' | 'notifications' | 'enough' | 'takecontrol' | 'fading' | 'main';
+type WelcomePhase =
+  | 'waiting'
+  | 'notifications'
+  | 'enough'
+  | 'takecontrol'
+  | 'fading'
+  | 'main';
+
+const TAKECONTROL_EXIT_MS = 500;
+const BRIDGE_FADE_MS = 200;
+const WELCOME_SLIDER_DELAY_MS = 1000;
 
 const WELCOME_TYPING_STEPS: Parameters<typeof SequentialTyping>[0]['steps'] = [
   { type: 'type', text: 'Welcome, traveler.', speed: 45 },
-  { type: 'pause', ms: 600 },
-  { type: 'delete', speed: 25 },
-  { type: 'type', text: 'Digital freedom, is here.', speed: 45 },
-  { type: 'pause', ms: 600 },
-  { type: 'delete', speed: 25 },
+  { type: 'pause', ms: 450 },
+  { type: 'delete', speed: 18 },
+  { type: 'type', text: 'Digital freedom is here.', speed: 45 },
+  { type: 'pause', ms: 550 },
+  { type: 'delete', speed: 18 },
   {
     type: 'type',
     text: 'First, tell us about yourself so we can help you find a way out.',
@@ -36,8 +47,8 @@ const WELCOME_TYPING_STEPS: Parameters<typeof SequentialTyping>[0]['steps'] = [
   { type: 'newline' },
   { type: 'pause', ms: 300 },
   { type: 'type', text: 'Answer honestly.', speed: 50 },
-  { type: 'pause', ms: 500 },
-  { type: 'fade-in', text: 'This will take 2 minutes', duration: 500 },
+  { type: 'pause', ms: 1000 },
+  { type: 'delete', speed: 14 },
 ];
 
 export function QuestionScreen({
@@ -46,6 +57,7 @@ export function QuestionScreen({
   onMultiAnswer,
   onAdvance,
   onContinue,
+  screenTimeHoursPerDay = 3,
   notificationDelay = 0,
   phoneMode = false,
 }: {
@@ -54,11 +66,26 @@ export function QuestionScreen({
   onMultiAnswer: (answers: DialogueAnswer[]) => void;
   onAdvance: () => void;
   onContinue: () => void;
+  screenTimeHoursPerDay?: number;
   notificationDelay?: number;
   phoneMode?: boolean;
 }) {
   const [welcomePhase, setWelcomePhase] = useState<WelcomePhase>(
     notificationDelay > 0 ? 'waiting' : 'notifications',
+  );
+  const [welcomeMainStage, setWelcomeMainStage] = useState<
+    'intro' | 'question'
+  >('intro');
+  const [welcomeQuestionComplete, setWelcomeQuestionComplete] = useState(false);
+  const [showWelcomeSlider, setShowWelcomeSlider] = useState(false);
+  const handleWelcomeIntroComplete = useCallback(() => {
+    setWelcomeMainStage('question');
+    setWelcomeQuestionComplete(false);
+    setShowWelcomeSlider(false);
+  }, []);
+  const handleWelcomeQuestionComplete = useCallback(
+    () => setWelcomeQuestionComplete(true),
+    [],
   );
 
   // Delay before showing notifications (for eye reveal)
@@ -85,9 +112,21 @@ export function QuestionScreen({
 
   useEffect(() => {
     if (welcomePhase !== 'fading') return;
-    const timer = setTimeout(() => setWelcomePhase('main'), 200);
+    const timer = setTimeout(
+      () => setWelcomePhase('main'),
+      TAKECONTROL_EXIT_MS + BRIDGE_FADE_MS,
+    );
     return () => clearTimeout(timer);
   }, [welcomePhase]);
+
+  useEffect(() => {
+    if (welcomeMainStage !== 'question' || !welcomeQuestionComplete) return;
+    const timer = setTimeout(
+      () => setShowWelcomeSlider(true),
+      WELCOME_SLIDER_DELAY_MS,
+    );
+    return () => clearTimeout(timer);
+  }, [welcomeMainStage, welcomeQuestionComplete]);
 
   // Loader
   if (node.type === 'loader' && node.loaderSteps) {
@@ -101,25 +140,29 @@ export function QuestionScreen({
 
   // Comparison
   if (node.id === 'comparison') {
+    return <ComparisonSlide onContinue={onAdvance} />;
+  }
+
+  if (node.id === 'screen-time-reflection') {
     return (
-      <div className="flex flex-col justify-between flex-1 py-4">
-        <ComparisonSlide onContinue={onAdvance} />
-      </div>
+      <ScreenTimeReflection
+        dailyHours={screenTimeHoursPerDay}
+        onComplete={onAdvance}
+      />
     );
   }
 
   // Welcome
-  if (node.type === 'break' && node.id === 'welcome') {
+  if (node.id === 'welcome') {
     return (
-      <div className="flex flex-col justify-between flex-1 py-4">
-        <div className="flex-1 flex flex-col items-center justify-center">
+      <div className="flex flex-col flex-1 py-4">
+        <div className="flex-1 flex flex-col items-center justify-center gap-5">
           {(welcomePhase === 'waiting' || welcomePhase === 'notifications') && (
             <RainEffect opacity={0.4} speed={6} />
           )}
 
           <AnimatePresence mode="wait">
-            {(welcomePhase === 'waiting' ||
-              welcomePhase === 'notifications') &&
+            {(welcomePhase === 'waiting' || welcomePhase === 'notifications') &&
               (phoneMode ? (
                 /* Phone mode — notifications on phone screen */
                 <motion.div
@@ -180,7 +223,7 @@ export function QuestionScreen({
                 transition={{ duration: 0.35 }}
                 className="text-center px-4"
               >
-                <span className="text-4xl font-black text-text-primary tracking-tight">
+                <span className="text-2xl font-bold text-text-primary">
                   Enough.
                 </span>
               </motion.div>
@@ -219,24 +262,81 @@ export function QuestionScreen({
               transition={{ duration: 0.8 }}
               className="flex flex-col items-center gap-5 w-full"
             >
-              <SmoothHeightContainer
-                className="w-full bg-[#171717] rounded-2xl border border-[#303030]"
-                innerClassName="p-5"
-              >
-                <SequentialTyping steps={WELCOME_TYPING_STEPS} />
-              </SmoothHeightContainer>
+              <AnimatePresence mode="wait">
+                {welcomeMainStage === 'intro' ? (
+                  <motion.div
+                    key="welcome-intro"
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -16, filter: 'blur(8px)' }}
+                    transition={{ duration: 0.45 }}
+                    className="w-full"
+                  >
+                    <SmoothHeightContainer
+                      className="w-full bg-[#171717] rounded-2xl border border-[#303030]"
+                      innerClassName="p-5"
+                    >
+                      <SequentialTyping
+                        steps={WELCOME_TYPING_STEPS}
+                        onComplete={handleWelcomeIntroComplete}
+                      />
+                    </SmoothHeightContainer>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="welcome-question"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -12 }}
+                    transition={{ duration: 0.45 }}
+                    className="w-full"
+                  >
+                    <SmoothHeightContainer
+                      className="w-full"
+                      innerClassName="flex flex-col gap-5"
+                    >
+                      <DialogueBubble
+                        text={node.scene.dialogue}
+                        subtext={node.scene.subtext}
+                        onComplete={handleWelcomeQuestionComplete}
+                      />
+
+                      <AnimatePresence initial={false}>
+                        {showWelcomeSlider &&
+                          node.answers &&
+                          node.sliderConfig && (
+                            <motion.div
+                              key="welcome-slider"
+                              initial={{
+                                opacity: 0,
+                                y: 18,
+                                filter: 'blur(8px)',
+                              }}
+                              animate={{
+                                opacity: 1,
+                                y: 0,
+                                filter: 'blur(0px)',
+                              }}
+                              exit={{ opacity: 0, y: 10, filter: 'blur(6px)' }}
+                              transition={{ duration: 0.45, ease: 'easeOut' }}
+                              className="overflow-hidden"
+                            >
+                              <SliderInput
+                                config={node.sliderConfig}
+                                answers={node.answers}
+                                onSelect={onAnswer}
+                                autoSubmit
+                              />
+                            </motion.div>
+                          )}
+                      </AnimatePresence>
+                    </SmoothHeightContainer>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </motion.div>
           )}
         </div>
-
-        {/* Button always at bottom */}
-        {welcomePhase === 'main' && (
-          <div className="pt-4 pb-8">
-            <Button onClick={onAdvance} className="w-full">
-              Begin Quest
-            </Button>
-          </div>
-        )}
       </div>
     );
   }

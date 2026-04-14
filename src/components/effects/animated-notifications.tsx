@@ -196,7 +196,7 @@ export function AnimatedNotifications({
                       layout: { duration: 0.15 },
                     }
               }
-              className="flex items-center gap-3 bg-black/[0.05] backdrop-blur-xl rounded-xl px-3 py-2.5 border border-white/10 shadow-md"
+              className="flex items-center gap-3 bg-white/[0.05] backdrop-blur-xl rounded-xl px-3 py-2.5 border border-white/10 shadow-md"
             >
               {notif.logo}
               <div className="flex-1 min-w-0">

@@ -7,6 +7,7 @@ type AnswerRecord = {
   answerId: string;
   tags: string[];
   score: Record<string, number>;
+  value?: number;
 };
 
 type QuizState = {
@@ -56,6 +57,7 @@ export const useQuizStore = create<QuizState>()(
               answerId: answer.id,
               tags: answer.tags ?? [],
               score: answer.score ?? {},
+              value: answer.value,
             },
           },
           scores: newScores,
@@ -68,7 +70,7 @@ export const useQuizStore = create<QuizState>()(
       selectMultiAnswers: (nodeId, answers, xpReward) => {
         const state = get();
         // Accumulate scores from all selected answers
-        let newScores = { ...state.scores };
+        const newScores = { ...state.scores };
         const allTags: string[] = [];
         const combinedScore: Record<string, number> = {};
         for (const answer of answers) {
@@ -116,7 +118,7 @@ export const useQuizStore = create<QuizState>()(
         const removedAnswer = newAnswers[prevNodeId];
         delete newAnswers[prevNodeId];
         // Recalculate scores by removing the undone answer's contribution
-        let newScores = { ...state.scores };
+        const newScores = { ...state.scores };
         if (removedAnswer?.score) {
           for (const [dim, value] of Object.entries(removedAnswer.score)) {
             newScores[dim] = (newScores[dim] ?? 0) - value;
