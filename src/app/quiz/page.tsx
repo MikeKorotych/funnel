@@ -13,6 +13,7 @@ import { QuestionScreen } from '@/components/quiz/question-screen';
 import { SceneTransition } from '@/components/quiz/scene-transition';
 import { XpGainToast } from '@/components/quiz/xp-gain-toast';
 import { LevelUpOverlay } from '@/components/quiz/level-up-overlay';
+import { EyeOpenReveal } from '@/components/effects/eye-open-reveal';
 import { CircleReveal } from '@/components/effects/circle-reveal';
 import { WavyBackground } from '@/components/effects/wavy-background';
 import { TopographyBackground } from '@/components/effects/topography-background';
@@ -21,6 +22,7 @@ import { GradientAnimationBackground } from '@/components/effects/gradient-anima
 import type { DialogueAnswer } from '@/engine/types';
 
 type BgType = 'wavy' | 'topography' | 'ripple' | 'gradient' | 'none';
+type RevealType = 'circle' | 'eye' | 'none';
 
 const BG_LABELS: Record<BgType, string> = {
   wavy: 'Waves',
@@ -64,6 +66,7 @@ export default function QuizPage() {
   const [prevLevel, setPrevLevel] = useState(1);
   const [lastXpGain, setLastXpGain] = useState(0);
   const [showReveal, setShowReveal] = useState(true);
+  const [revealType, setRevealType] = useState<RevealType>('circle');
   const [bgType, setBgType] = useState<BgType>('topography');
   const [showDevPanel, setShowDevPanel] = useState(false);
 
@@ -136,6 +139,7 @@ export default function QuizPage() {
             onMultiAnswer={handleMultiAnswer}
             onAdvance={handleAdvance}
             onContinue={handleContinue}
+            notificationDelay={revealType === 'eye' ? 2000 : 0}
           />
         </SceneTransition>
       </main>
@@ -143,10 +147,7 @@ export default function QuizPage() {
       <XpGainToast xp={lastXpGain} />
 
       {showLevelUp && (
-        <LevelUpOverlay
-          level={level}
-          onDismiss={() => setShowLevelUp(false)}
-        />
+        <LevelUpOverlay level={level} onDismiss={() => setShowLevelUp(false)} />
       )}
     </MobileContainer>
   );
@@ -156,7 +157,12 @@ export default function QuizPage() {
     switch (bgType) {
       case 'wavy':
         return (
-          <WavyBackground blur={8} speed="fast" waveOpacity={0.7} waveWidth={50}>
+          <WavyBackground
+            blur={8}
+            speed="fast"
+            waveOpacity={0.7}
+            waveWidth={50}
+          >
             {quizContent}
           </WavyBackground>
         );
@@ -166,7 +172,9 @@ export default function QuizPage() {
         return <RippleBackground>{quizContent}</RippleBackground>;
       case 'gradient':
         return (
-          <GradientAnimationBackground>{quizContent}</GradientAnimationBackground>
+          <GradientAnimationBackground>
+            {quizContent}
+          </GradientAnimationBackground>
         );
       case 'none':
         return <div className="min-h-dvh bg-[#0a0a0a]">{quizContent}</div>;
@@ -175,8 +183,11 @@ export default function QuizPage() {
 
   return (
     <ThemeProvider theme={theme}>
-      {showReveal && (
+      {showReveal && revealType === 'circle' && (
         <CircleReveal duration={1.5} onComplete={() => setShowReveal(false)} />
+      )}
+      {showReveal && revealType === 'eye' && (
+        <EyeOpenReveal onComplete={() => setShowReveal(false)} />
       )}
 
       {renderWithBackground()}
@@ -188,18 +199,16 @@ export default function QuizPage() {
             onClick={() => setShowDevPanel((p) => !p)}
             className="fixed top-3 right-3 z-[999] w-8 h-8 rounded-full bg-white/10 text-white/50 text-xs flex items-center justify-center hover:bg-white/20"
           >
-            BG
+            DEV
           </button>
 
           {showDevPanel && (
-            <div className="fixed top-12 right-3 z-[999] bg-[#171717] border border-[#303030] rounded-lg p-2 flex flex-col gap-1">
+            <div className="fixed top-12 right-3 z-[999] bg-[#171717] border border-[#303030] rounded-lg p-2 flex flex-col gap-1 min-w-[120px]">
+              <p className="text-[10px] text-white/30 px-2 pt-1">Background</p>
               {(Object.keys(BG_LABELS) as BgType[]).map((key) => (
                 <button
                   key={key}
-                  onClick={() => {
-                    setBgType(key);
-                    setShowDevPanel(false);
-                  }}
+                  onClick={() => setBgType(key)}
                   className={`text-xs px-3 py-1.5 rounded text-left ${
                     bgType === key
                       ? 'bg-white text-black'
@@ -207,6 +216,25 @@ export default function QuizPage() {
                   }`}
                 >
                   {BG_LABELS[key]}
+                </button>
+              ))}
+
+              <div className="h-px bg-[#303030] my-1" />
+              <p className="text-[10px] text-white/30 px-2">Reveal</p>
+              {(['circle', 'eye', 'none'] as RevealType[]).map((key) => (
+                <button
+                  key={key}
+                  onClick={() => {
+                    setRevealType(key);
+                    setShowReveal(true);
+                  }}
+                  className={`text-xs px-3 py-1.5 rounded text-left capitalize ${
+                    revealType === key
+                      ? 'bg-white text-black'
+                      : 'text-white/60 hover:bg-white/10'
+                  }`}
+                >
+                  {key}
                 </button>
               ))}
             </div>

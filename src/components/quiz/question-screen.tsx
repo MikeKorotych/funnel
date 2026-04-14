@@ -18,7 +18,7 @@ import { Button } from '@/components/ui/button';
 import { SmoothHeightContainer } from '@/components/ui/smooth-height';
 import { motion, AnimatePresence } from 'framer-motion';
 
-type WelcomePhase = 'notifications' | 'enough' | 'fading' | 'main';
+type WelcomePhase = 'waiting' | 'notifications' | 'enough' | 'fading' | 'main';
 
 export function QuestionScreen({
   node,
@@ -26,15 +26,28 @@ export function QuestionScreen({
   onMultiAnswer,
   onAdvance,
   onContinue,
+  notificationDelay = 0,
 }: {
   node: DialogueNode;
   onAnswer: (answer: DialogueAnswer) => void;
   onMultiAnswer: (answers: DialogueAnswer[]) => void;
   onAdvance: () => void;
   onContinue: () => void;
+  notificationDelay?: number;
 }) {
-  const [welcomePhase, setWelcomePhase] =
-    useState<WelcomePhase>('notifications');
+  const [welcomePhase, setWelcomePhase] = useState<WelcomePhase>(
+    notificationDelay > 0 ? 'waiting' : 'notifications',
+  );
+
+  // Delay before showing notifications (for eye reveal)
+  useEffect(() => {
+    if (welcomePhase !== 'waiting') return;
+    const timer = setTimeout(
+      () => setWelcomePhase('notifications'),
+      notificationDelay,
+    );
+    return () => clearTimeout(timer);
+  }, [welcomePhase, notificationDelay]);
 
   // Loader
   if (node.type === 'loader' && node.loaderSteps) {
@@ -114,7 +127,10 @@ export function QuestionScreen({
                 className="flex flex-col items-center gap-5 w-full"
               >
                 <GuideCharacter mood="neutral" size="lg" />
-                <SmoothHeightContainer className="w-full bg-[#171717] rounded-2xl border border-[#303030]" innerClassName="p-5">
+                <SmoothHeightContainer
+                  className="w-full bg-[#171717] rounded-2xl border border-[#303030]"
+                  innerClassName="p-5"
+                >
                   <TypingAnimation
                     text={node.scene.dialogue}
                     speed={50}
