@@ -2,8 +2,20 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
+import { Sparkles, Compass, Heart, Globe, Music, MapPin } from 'lucide-react';
 import { NumberTicker } from '@/components/effects/number-ticker';
-import { TextGenerateEffect } from '@/components/effects/text-generate-effect';
+
+const reflectionItems = [
+  { icon: Sparkles, text: 'Joy' },
+  { icon: Compass, text: 'Curiosity' },
+  { icon: Heart, text: 'Things that really mattered' },
+] as const;
+
+const alternativeItems = [
+  { icon: Globe, text: 'Learn a language' },
+  { icon: Music, text: 'Master an instrument' },
+  { icon: MapPin, text: 'See half the world' },
+] as const;
 
 export function ScreenTimeReflection({
   dailyHours,
@@ -18,18 +30,15 @@ export function ScreenTimeReflection({
     () => Math.round(dailyHours * 365 * 5),
     [dailyHours],
   );
-  const totalDays = useMemo(
-    () => Math.round(totalHours / 24),
-    [totalHours],
-  );
+  const totalDays = useMemo(() => Math.round(totalHours / 24), [totalHours]);
 
   useEffect(() => {
     const timers = [
       window.setTimeout(() => setStage(1), 1500),
       window.setTimeout(() => setStage(2), 2800),
-      window.setTimeout(() => setStage(3), 7500),
-      window.setTimeout(() => setStage(4), 11700),
-      window.setTimeout(() => onComplete(), 13200),
+      window.setTimeout(() => setStage(3), 6300),
+      window.setTimeout(() => setStage(4), 9300),
+      window.setTimeout(() => onComplete(), 10800),
     ];
 
     return () => {
@@ -60,14 +69,14 @@ export function ScreenTimeReflection({
           }}
         />
 
-        <p className="text-[10px] uppercase tracking-[0.35em] text-white/25">
+        <p className="text-[10px] uppercase tracking-[0.35em] text-white/35">
           In the last 5 years
         </p>
 
         <div className="mt-3 flex items-baseline gap-2">
           <NumberTicker
             value={totalHours}
-            className="text-7xl font-black leading-none tracking-tight text-white sm:text-8xl"
+            className="text-7xl font-black leading-none tracking-tight text-white sm:text-7xl"
           />
           <span className="pb-1 text-xs uppercase tracking-[0.28em] text-white/30">
             hours
@@ -84,10 +93,10 @@ export function ScreenTimeReflection({
             : { opacity: 0, y: 8, filter: 'blur(6px)' }
         }
         transition={{ duration: 0.6 }}
-        className="mt-5 text-center text-base text-white/40"
+        className="mt-5 text-center text-white/40"
       >
         That&apos;s{' '}
-        <span className="font-semibold text-white/60 tabular-nums">
+        <span className="text-xl font-bold text-white/70 tabular-nums">
           {totalDays}&nbsp;full&nbsp;days
         </span>
         . Gone.
@@ -97,34 +106,99 @@ export function ScreenTimeReflection({
       <motion.div
         initial={{ scaleX: 0, opacity: 0 }}
         animate={
-          stage >= 2
-            ? { scaleX: 1, opacity: 1 }
-            : { scaleX: 0, opacity: 0 }
+          stage >= 2 ? { scaleX: 1, opacity: 1 } : { scaleX: 0, opacity: 0 }
         }
         transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
         className="mt-8 h-px w-12 origin-center bg-gradient-to-r from-transparent via-white/15 to-transparent"
       />
 
-      {/* ── Soft reflection — stage 2 (text-generate) ── */}
-      <TextGenerateEffect
-        text="Not all of it was wasted. There was joy, curiosity, and things that really mattered."
-        start={stage >= 2}
-        speed={0.16}
-        delay={0.3}
-        periodPause={0.7}
-        commaPause={0.36}
-        className="mt-5 max-w-[17rem] text-center text-[13px] leading-relaxed text-white/35"
+      {/* ── Soft reflection — stage 2 ── */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={stage >= 2 ? { opacity: 1 } : { opacity: 0 }}
+        transition={{ duration: 0.6, delay: 0.3 }}
+        className="mt-5 flex flex-col items-center gap-2.5"
+      >
+        <p
+          className="text-[13px] mb-1"
+          style={{ color: 'rgba(255,255,255,0.40)' }}
+        >
+          Not all of it was wasted. There was:
+        </p>
+        {reflectionItems.map(({ icon: Icon, text }, i) => (
+          <motion.div
+            key={text}
+            initial={{ opacity: 0, y: 6, filter: 'blur(6px)' }}
+            animate={
+              stage >= 2
+                ? { opacity: 1, y: 0, filter: 'blur(0px)' }
+                : { opacity: 0, y: 6, filter: 'blur(6px)' }
+            }
+            transition={{ duration: 0.5, delay: 0.6 + i * 0.8 }}
+            className="flex items-center gap-2.5"
+          >
+            <Icon
+              className="h-4 w-4 shrink-0"
+              style={{ color: `rgba(255,255,255,${0.48 + i * 0.08})` }}
+            />
+            <span
+              className="text-[13px] leading-relaxed"
+              style={{ color: `rgba(255,255,255,${0.48 + i * 0.08})` }}
+            >
+              {text}
+            </span>
+          </motion.div>
+        ))}
+      </motion.div>
+
+      {/* ── Divider between blocks ── */}
+      <motion.div
+        initial={{ scaleX: 0, opacity: 0 }}
+        animate={
+          stage >= 3 ? { scaleX: 1, opacity: 1 } : { scaleX: 0, opacity: 0 }
+        }
+        transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+        className="mt-5 h-px w-12 origin-center bg-gradient-to-r from-transparent via-white/15 to-transparent"
       />
 
-      {/* ── Contrast beat — stage 3 (text-generate) ── */}
-      <TextGenerateEffect
-        text="But that was also enough time to learn a language, master an instrument, or see half the world."
-        start={stage >= 3}
-        speed={0.16}
-        periodPause={0.7}
-        commaPause={0.36}
-        className="mt-4 max-w-[17rem] text-center text-[13px] leading-relaxed text-white/50"
-      />
+      {/* ── Contrast beat — stage 3 ── */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={stage >= 3 ? { opacity: 1 } : { opacity: 0 }}
+        transition={{ duration: 0.6 }}
+        className="mt-5 flex flex-col items-center gap-2.5"
+      >
+        <p
+          className="text-[13px] mb-1"
+          style={{ color: 'rgba(255,255,255,0.72)' }}
+        >
+          But that was also enough time to:
+        </p>
+        {alternativeItems.map(({ icon: Icon, text }, i) => (
+          <motion.div
+            key={text}
+            initial={{ opacity: 0, y: 6, filter: 'blur(6px)' }}
+            animate={
+              stage >= 3
+                ? { opacity: 1, y: 0, filter: 'blur(0px)' }
+                : { opacity: 0, y: 6, filter: 'blur(6px)' }
+            }
+            transition={{ duration: 0.5, delay: 0.3 + i * 0.8 }}
+            className="flex items-center gap-2.5"
+          >
+            <Icon
+              className="h-4 w-4 shrink-0"
+              style={{ color: `rgba(255,255,255,${0.80 + i * 0.08})` }}
+            />
+            <span
+              className="text-[13px] leading-relaxed"
+              style={{ color: `rgba(255,255,255,${0.80 + i * 0.08})` }}
+            >
+              {text}
+            </span>
+          </motion.div>
+        ))}
+      </motion.div>
 
       {/* ── Whisper — stage 4 ── */}
       <motion.p
