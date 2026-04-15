@@ -9,12 +9,14 @@ import { cn } from "@/lib/cn";
 
 /* ── Donut-wheel geometry ── */
 const OUTER_R = 146;
-const INNER_R = 52;
+const INNER_R = 36;
 const GAP_DEG = 3;
 const VIEW = 320;
 const HALF = VIEW / 2;
+const LABEL_R = (OUTER_R + INNER_R) / 2;
+const LABEL_W = 80;
+const LABEL_H = 56;
 
-/** Build an SVG arc-segment path for one donut slice. */
 function segmentPath(index: number, total: number): string {
   const span = 360 / total;
   const s = (index * span - 90 + GAP_DEG / 2) * (Math.PI / 180);
@@ -32,12 +34,24 @@ function segmentPath(index: number, total: number): string {
   return `M ${x1o} ${y1o} A ${OUTER_R} ${OUTER_R} 0 0 1 ${x2o} ${y2o} L ${x2i} ${y2i} A ${INNER_R} ${INNER_R} 0 0 0 ${x1i} ${y1i} Z`;
 }
 
-/** Centre of a segment (for placing label). */
+/** Label centre relative to donut centre (0,0) — used inside the SVG <g>. */
 function labelPos(index: number, total: number) {
   const span = 360 / total;
   const mid = ((index * span - 90 + span / 2) * Math.PI) / 180;
-  const r = (OUTER_R + INNER_R) / 2;
-  return { x: HALF + Math.cos(mid) * r, y: HALF + Math.sin(mid) * r };
+  return { x: Math.cos(mid) * LABEL_R, y: Math.sin(mid) * LABEL_R };
+}
+
+/* ── Colour helpers ── */
+function segmentFill(selected: boolean, hovered: boolean) {
+  if (selected) return "rgba(255,255,255,0.08)";
+  if (hovered) return "rgba(255,255,255,0.04)";
+  return "#141414";
+}
+
+function segmentStroke(selected: boolean, hovered: boolean) {
+  if (selected) return "rgba(255,255,255,0.28)";
+  if (hovered) return "rgba(255,255,255,0.14)";
+  return "#262626";
 }
 
 export function MultiSelectGrid({
@@ -50,6 +64,7 @@ export function MultiSelectGrid({
   onConfirm: (selected: DialogueAnswer[]) => void;
 }) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
 
   const segments = useMemo(
     () =>
@@ -84,109 +99,179 @@ export function MultiSelectGrid({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 15 }}
-      animate={{ opacity: 1, y: 0 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.6 }}
       className="flex flex-col items-center gap-4 w-full flex-1"
     >
       <p className="text-xs text-text-muted text-center">
         Select up to {config.maxSelect}
       </p>
 
-      {/* ── Donut wheel ── */}
-      <div className="relative mx-auto" style={{ width: VIEW, height: VIEW }}>
-        {/* SVG segments */}
-        <svg
-          viewBox={`0 0 ${VIEW} ${VIEW}`}
-          className="absolute inset-0 w-full h-full"
-        >
-          <g transform={`translate(${HALF},${HALF})`}>
-            {answers.map((answer, i) => {
-              const isSelected = selectedIds.has(answer.id);
-              return (
-                <motion.path
-                  key={answer.id}
-                  d={segments[i].path}
-                  initial={{ opacity: 0, scale: 0.85 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{
-                    delay: 0.08 + i * 0.07,
-                    type: "spring",
-                    stiffness: 200,
-                    damping: 22,
-                  }}
-                  className="cursor-pointer outline-none"
-                  fill={isSelected ? "rgba(255,255,255,0.07)" : "#151515"}
-                  stroke={isSelected ? "rgba(255,255,255,0.25)" : "#2a2a2a"}
-                  strokeWidth={1}
-                  onClick={() => toggle(answer.id)}
-                  style={{ transformOrigin: "0 0" }}
-                />
-              );
-            })}
+      {/* ── Donut wheel — everything lives inside a single SVG ── */}
+      <svg
+        viewBox={`0 0 ${VIEW} ${VIEW}`}
+        className="mx-auto w-full"
+        style={{ maxWidth: VIEW, maxHeight: VIEW }}
+      >
+        <defs>
+          <filter
+            id="seg-glow"
+            x="-40%"
+            y="-40%"
+            width="180%"
+            height="180%"
+          >
+            <feGaussianBlur in="SourceAlpha" stdDeviation="8" result="blur" />
+            <feFlood floodColor="rgba(255,255,255,0.12)" result="color" />
+            <feComposite in="color" in2="blur" operator="in" result="glow" />
+            <feMerge>
+              <feMergeNode in="glow" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
 
-            {/* Inner circle border */}
-            <circle
-              r={INNER_R - 1}
-              fill="transparent"
-              stroke="#2a2a2a"
-              strokeWidth={1}
-            />
+        <g transform={`translate(${HALF},${HALF})`}>
+          {/* Ambient centre glow */}
+          <circle
+            r={90}
+            fill="url(#centre-glow)"
+            className="pointer-events-none"
+          />
+          <defs>
+            <radialGradient id="centre-glow">
+              <stop offset="0%" stopColor="rgba(255,255,255,0.035)" />
+              <stop offset="70%" stopColor="transparent" />
+            </radialGradient>
+          </defs>
 
-            {/* Outer circle border */}
-            <circle
-              r={OUTER_R + 1}
-              fill="none"
-              stroke="#2a2a2a"
-              strokeWidth={1}
-            />
-          </g>
-        </svg>
+          {/* Outer ring — draws in */}
+          <motion.circle
+            r={OUTER_R + 1}
+            fill="none"
+            stroke="#262626"
+            strokeWidth={1}
+            initial={{ pathLength: 0, opacity: 0 }}
+            animate={{ pathLength: 1, opacity: 1 }}
+            transition={{ duration: 1.2, ease: "easeInOut" }}
+          />
 
-        {/* Center counter */}
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none">
-          <span className="text-sm text-white/25 tabular-nums">
+          {/* Inner ring — draws in */}
+          <motion.circle
+            r={INNER_R - 1}
+            fill="none"
+            stroke="#262626"
+            strokeWidth={1}
+            initial={{ pathLength: 0, opacity: 0 }}
+            animate={{ pathLength: 1, opacity: 1 }}
+            transition={{ duration: 1.0, ease: "easeInOut", delay: 0.15 }}
+          />
+
+          {/* Donut segments */}
+          {answers.map((answer, i) => {
+            const isSelected = selectedIds.has(answer.id);
+            const isHovered = hoveredId === answer.id;
+
+            return (
+              <motion.path
+                key={answer.id}
+                d={segments[i].path}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{
+                  delay: 0.35 + i * 0.09,
+                  duration: 0.55,
+                  ease: "easeOut",
+                }}
+                className="cursor-pointer outline-none"
+                filter={isSelected ? "url(#seg-glow)" : undefined}
+                style={{
+                  fill: segmentFill(isSelected, isHovered),
+                  stroke: segmentStroke(isSelected, isHovered),
+                  strokeWidth: isSelected ? 1.5 : 1,
+                  transition:
+                    "fill 0.25s ease, stroke 0.25s ease, stroke-width 0.2s ease, filter 0.3s ease",
+                }}
+                onMouseEnter={() => setHoveredId(answer.id)}
+                onMouseLeave={() => setHoveredId(null)}
+                onClick={() => toggle(answer.id)}
+              />
+            );
+          })}
+
+          {/* Centre counter */}
+          <motion.text
+            key={selectedIds.size}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.3 }}
+            textAnchor="middle"
+            dominantBaseline="central"
+            className="pointer-events-none select-none"
+            style={{
+              fill: `rgba(255,255,255,${0.18 + selectedIds.size * 0.16})`,
+              fontSize: 13,
+              fontVariantNumeric: "tabular-nums",
+            }}
+          >
             {selectedIds.size}/{config.maxSelect}
-          </span>
-        </div>
+          </motion.text>
 
-        {/* Labels (icon + text) over each segment */}
-        {answers.map((answer, i) => {
-          const { x, y } = segments[i].label;
-          const isSelected = selectedIds.has(answer.id);
+          {/* Labels — foreignObject inside same <g>, guaranteed alignment */}
+          {answers.map((answer, i) => {
+            const { x, y } = segments[i].label;
+            const isSelected = selectedIds.has(answer.id);
+            const isHovered = hoveredId === answer.id;
 
-          return (
-            <div
-              key={`label-${answer.id}`}
-              className="absolute flex flex-col items-center justify-center gap-1 pointer-events-none"
-              style={{
-                left: x,
-                top: y,
-                transform: "translate(-50%, -50%)",
-                width: 72,
-              }}
-            >
-              {answer.icon && (
-                <Icon
-                  name={answer.icon}
-                  size={22}
-                  className={cn(
-                    "transition-colors duration-200",
-                    isSelected ? "text-white" : "text-white/40",
-                  )}
-                />
-              )}
-              <span
-                className={cn(
-                  "text-[10px] font-medium text-center leading-tight",
-                  isSelected ? "text-white" : "text-white/40",
-                )}
+            return (
+              <motion.foreignObject
+                key={`label-${answer.id}`}
+                x={x - LABEL_W / 2}
+                y={y - LABEL_H / 2}
+                width={LABEL_W}
+                height={LABEL_H}
+                className="pointer-events-none overflow-visible"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{
+                  delay: 0.55 + i * 0.09,
+                  duration: 0.45,
+                }}
               >
-                {answer.text}
-              </span>
-            </div>
-          );
-        })}
-      </div>
+                <div className="flex flex-col items-center justify-center gap-1 h-full w-full">
+                  {answer.icon && (
+                    <Icon
+                      name={answer.icon}
+                      size={22}
+                      className={cn(
+                        "transition-all duration-200",
+                        isSelected
+                          ? "text-white drop-shadow-[0_0_6px_rgba(255,255,255,0.3)]"
+                          : isHovered
+                            ? "text-white/60"
+                            : "text-white/30",
+                      )}
+                    />
+                  )}
+                  <span
+                    className={cn(
+                      "text-[10px] font-medium text-center leading-tight transition-colors duration-200",
+                      isSelected
+                        ? "text-white"
+                        : isHovered
+                          ? "text-white/55"
+                          : "text-white/30",
+                    )}
+                  >
+                    {answer.text}
+                  </span>
+                </div>
+              </motion.foreignObject>
+            );
+          })}
+        </g>
+      </svg>
 
       <motion.div
         animate={{ opacity: canContinue ? 1 : 0.3 }}

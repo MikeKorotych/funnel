@@ -134,7 +134,7 @@ export function ScreenTimeReflection({
                 ? { opacity: 1, y: 0, filter: 'blur(0px)' }
                 : { opacity: 0, y: 6, filter: 'blur(6px)' }
             }
-            transition={{ duration: 0.5, delay: 0.6 + i * 0.8 }}
+            transition={{ duration: 0.5, delay: 1.2 + i * 0.8 }}
             className="flex items-center gap-2.5"
           >
             <Icon
@@ -183,7 +183,7 @@ export function ScreenTimeReflection({
                 ? { opacity: 1, y: 0, filter: 'blur(0px)' }
                 : { opacity: 0, y: 6, filter: 'blur(6px)' }
             }
-            transition={{ duration: 0.5, delay: 0.3 + i * 0.8 }}
+            transition={{ duration: 0.5, delay: 0.6 + i * 0.8 }}
             className="flex items-center gap-2.5"
           >
             <Icon
